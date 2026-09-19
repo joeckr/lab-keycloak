@@ -1,6 +1,13 @@
 apiVersion: v2
-name: lab-service
-description: Helm chart for experimenting with new services in a lab environment
+name: lab-keycloak
+description: Helm chart for experimenting with keycloak
 type: application
 version: 0.2.0
 appVersion: "0.2.0"
+
+dependencies:
+  - name: postgres
+    version: "0.2.0"
+    repository: oci://ghcr.io/joeckr/charts
+    alias: keycloak-db
+    condition: postgres.enabled

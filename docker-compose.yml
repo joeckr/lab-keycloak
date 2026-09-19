@@ -1,23 +1,36 @@
 services:
-  lab-service:
-    container_name: lab-service
-    image: nginxinc/nginx-unprivileged:alpine
-    restart: unless-stopped
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    container_name: keycloak
     ports:
       - "8080:8080"
+    command: start-dev
+    restart: unless-stopped
     environment:
-      - ENV=lab
-      - LOG_LEVEL=debug
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=changeme # betterleaks:allow
+      - KC_HOSTNAME=localhost
+      - KC_HOSTNAME_PORT=8080
+      - KC_HOSTNAME_STRICT_HTTPS=false
+      - KC_HTTP_ENABLED=true
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=changeme # betterleaks:allow
+
+  keycloak-db:
+    image: ghcr.io/joeckr/postgres:18
+    container_name: keycloak-db
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=changeme # betterleaks:allow
     volumes:
-      - lab-data:/tmp/data
-      - ./config/config.txt:/app/config.txt:ro
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/ || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
+      - keycloak-data:/tmp
 
 volumes:
-  lab-data:
+  keycloak-data:
     driver: local
