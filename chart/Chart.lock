@@ -1,0 +1,6 @@
+dependencies:
+- name: postgres
+  repository: oci://ghcr.io/joeckr/charts
+  version: 0.2.0
+digest: sha256:8b9e917b9131ac2f06fd942e064e187dd49e9a15e3983f9f2abdb3e36619cee7
+generated: "2026-09-19T07:07:18.048104-04:00"

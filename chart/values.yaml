@@ -1,18 +1,18 @@
 app:
-  name: lab-service
-  image: nginxinc/nginx-unprivileged
-  tag: alpine
+  name: lab-keycloak
+  image: quay.io/keycloak/keycloak
+  tag: 26.7.4
   pullPolicy: Always
   replicaCount: 1
   port: 8080
   env: "lab"
   resources:
     limits:
-      cpu: 250m
-      memory: 256Mi
+      cpu: 6
+      memory: 3Gi
     requests:
-      cpu: 50m
-      memory: 64Mi
+      cpu: 1200m
+      memory: 896Mi
   securityContext:
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: false
@@ -32,7 +32,7 @@ app:
       effect: "NoSchedule"
 
 service:
-  name: lab-service
+  name: lab-keycloak
   type: ClusterIP
   port: 8080
 
@@ -44,3 +44,10 @@ ingress:
   className: "nginx"
   path: /
   pathType: "Prefix"
+
+postgres:
+  enabled: true
+  tag: 18
+  db: keycloak
+  user: keycloak
+  password: changeme # betterleaks:allow
