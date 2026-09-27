@@ -27,6 +27,8 @@ spec:
         - name: {{ .Values.app.name }}
           image: "{{ .Values.app.image }}:{{ .Values.app.tag }}"
           imagePullPolicy: {{ .Values.app.pullPolicy }}
+          args:
+            - start
           {{- with .Values.app.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
@@ -35,8 +37,26 @@ spec:
             - containerPort: {{ .Values.app.port }}
               name: http
           env:
-            - name: ENV
-              value: {{ .Values.app.env | quote }}
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: "jdbc:postgresql://{{ .Values.db.postgres.name }}:5432/{{ .Values.db.postgres.db }}"
+            - name: KC_DB_USERNAME
+              value: {{ .Values.db.postgres.user | quote }}
+            - name: KC_DB_PASSWORD
+              value: {{ .Values.db.postgres.password | quote }}
+            - name: KC_HOSTNAME
+              value: {{ .Values.ingress.host | quote }}
+            - name: KC_HOSTNAME_PORT
+              value: {{ .Values.service.port | quote }}
+            - name: KC_HOSTNAME_STRICT_HTTPS
+              value: "false"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: {{ .Values.app.admin.username | quote }}
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              value: {{ .Values.app.admin.password | quote }}
           {{- with .Values.app.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

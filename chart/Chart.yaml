@@ -7,7 +7,7 @@ appVersion: "0.2.0"
 
 dependencies:
   - name: postgres
-    version: "0.2.0"
+    version: "0.2.3"
     repository: oci://ghcr.io/joeckr/charts
-    alias: keycloak-db
-    condition: postgres.enabled
+    alias: db
+    condition: db.enabled
