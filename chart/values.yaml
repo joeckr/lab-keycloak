@@ -1,18 +1,17 @@
 app:
-  name: lab-keycloak
+  name: keycloak
   image: quay.io/keycloak/keycloak
   tag: 26.7.4
   pullPolicy: Always
   replicaCount: 1
   port: 8080
-  env: "lab"
+  admin:
+    username: admin
+    password: changeme # betterleaks:allow
   resources:
     limits:
       cpu: 6
       memory: 3Gi
-    requests:
-      cpu: 1200m
-      memory: 896Mi
   securityContext:
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: false
@@ -23,6 +22,7 @@ app:
     runAsNonRoot: true
     seccompProfile:
       type: RuntimeDefault
+    fsGroup: 1031
   tolerations:
     - key: "node-role.kubernetes.io/control-plane"
       operator: "Exists"
@@ -32,22 +32,23 @@ app:
       effect: "NoSchedule"
 
 service:
-  name: lab-keycloak
+  name: keycloak
   type: ClusterIP
   port: 8080
 
 ingress:
-  enabled: false
-  name: lab-ingress
-  host: "lab.local"
-  route: "false"  # Set to "true" to generate an OpenShift Route instead of Ingress
+  enabled: true
+  name: keycloak-ingress
+  host: "keycloak.joeckr.dev"
   className: "nginx"
   path: /
   pathType: "Prefix"
 
-postgres:
+db:
   enabled: true
-  tag: 18
-  db: keycloak
-  user: keycloak
-  password: changeme # betterleaks:allow
+  postgres:
+    name: keycloak-db
+    tag: 18
+    db: keycloak
+    user: keycloak
+    password: changeme # betterleaks:allow
