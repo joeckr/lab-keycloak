@@ -36,6 +36,8 @@ spec:
           ports:
             - containerPort: {{ .Values.app.port }}
               name: http
+            - containerPort: {{ .Values.app.managementPort }}
+              name: management
           env:
             - name: KC_DB
               value: postgres
@@ -46,17 +48,36 @@ spec:
             - name: KC_DB_PASSWORD
               value: {{ .Values.db.postgres.password | quote }}
             - name: KC_HOSTNAME
-              value: {{ .Values.ingress.host | quote }}
-            - name: KC_HOSTNAME_PORT
-              value: {{ .Values.service.port | quote }}
-            - name: KC_HOSTNAME_STRICT_HTTPS
-              value: "false"
+              value: {{ .Values.app.hostname | quote }}
+            - name: KC_PROXY_HEADERS
+              value: {{ .Values.app.proxyHeaders | quote }}
             - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HEALTH_ENABLED
               value: "true"
             - name: KC_BOOTSTRAP_ADMIN_USERNAME
               value: {{ .Values.app.admin.username | quote }}
             - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               value: {{ .Values.app.admin.password | quote }}
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: management
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: management
+            periodSeconds: 15
+            failureThreshold: 3
           {{- with .Values.app.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

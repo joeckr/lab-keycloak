@@ -5,13 +5,19 @@ app:
   pullPolicy: Always
   replicaCount: 1
   port: 8080
+  managementPort: 9000
+  hostname: "https://keycloak.joeckr.dev"
+  proxyHeaders: "xforwarded"
   admin:
     username: admin
     password: changeme # betterleaks:allow
   resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
     limits:
-      cpu: 6
-      memory: 3Gi
+      cpu: 2
+      memory: 2Gi
   securityContext:
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: false
@@ -36,8 +42,19 @@ service:
   type: ClusterIP
   port: 8080
 
-ingress:
+httpRoute:
   enabled: true
+  name: keycloak-route
+  host: "keycloak.joeckr.dev"
+  parentRefs:
+    - name: traefik-gateway
+      namespace: gateway
+      sectionName: web
+  path: /
+  pathType: PathPrefix
+
+ingress:
+  enabled: false
   name: keycloak-ingress
   host: "keycloak.joeckr.dev"
   className: "nginx"
@@ -52,3 +69,4 @@ db:
     db: keycloak
     user: keycloak
     password: changeme # betterleaks:allow
+    storageSize: 10Gi

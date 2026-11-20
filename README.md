@@ -1,22 +1,23 @@
-# skeleton-lab-service
+# lab-keycloak
 
-A starter skeleton repository tailored for rapid experimentation, prototyping, and testing of services in a lab environment (local container runtimes and Kubernetes).
+A dedicated lab service repository for deploying, configuring, experimenting with, and testing [Keycloak](https://www.keycloak.org/) (backed by PostgreSQL) in a lab environment (local container runtimes and Kubernetes).
 
-> **Note**: This repository intentionally **does NOT include a Dockerfile**. If a custom image build is required, use an OCI image repository (such as `skeleton-oci-modified`). Lab repositories focus on configuring, deploying, and testing upstream or pre-built container services.
+> **Note**: This repository intentionally **does NOT include a Dockerfile**. If a custom image build is required, use an OCI image repository (such as `oci-postgres`). Lab repositories focus on configuring, deploying, and testing upstream or pre-built container services.
 
 ---
 
 ## Features
 
 - **Helm Chart (`chart/`)**:
-  - Out-of-the-box support for deploying services to Kubernetes.
-  - Parameterized upstream container image (`image:tag`), replica count, and ports.
+  - Out-of-the-box support for deploying Keycloak to Kubernetes.
+  - Subchart dependency on PostgreSQL (`postgres: 0.2.3` from `oci://ghcr.io/joeckr/charts`).
+  - Parameterized container images (`quay.io/keycloak/keycloak:26.7.4`), replica count, ports, and resource limits.
   - Standard Kubernetes Ingress support (`networking.k8s.io/v1`).
   - Secure defaults: non-root execution (`runAsNonRoot: true`), `RuntimeDefault` seccomp profile, and dropping `ALL` capabilities.
   - Master and control-plane node tolerations for compact lab clusters.
 - **Compose (`compose.yml`)**:
-  - Spin up and test the lab service locally in seconds without requiring a cluster.
-  - Pre-configured with port forwarding, and healthchecks.
+  - Spin up and test Keycloak with a PostgreSQL backend (`keycloak-db`) locally in seconds without requiring a cluster.
+  - Pre-configured with port forwarding (Keycloak on `8080`, PostgreSQL on `5432`), development mode (`start-dev`), and local volume persistence.
 - **Environment & Tooling (`mise` & `hk`)**:
   - `mise.toml`: Tool version management (`helm`, `betterleaks`, `addlicense`, `trivy`, `actionlint`, `shellcheck`, `zizmor`, `hk`, `pkl`, `tombi`, `yamllint`) and convenient task aliases.
   - `hk.pkl`: Fast git hooks and project checks enforcing Conventional Commits, branch protection, secret scanning (`betterleaks`), Helm linting, workflow linting (`actionlint`), security audits (`zizmor`), YAML linting (`yamllint`), TOML linting (`tombi`), shell checking (`shellcheck`), and license checks (`addlicense`).
@@ -40,16 +41,18 @@ A starter skeleton repository tailored for rapid experimentation, prototyping, a
 │       ├── release.yml          # Semantic release and Helm chart publishing to GHCR
 │       └── test_release.yml     # PR dry-run test for releases and chart packaging
 ├── chart/
-│   ├── Chart.yaml               # Helm chart definition
-│   ├── values.yaml              # Default configuration values
+│   ├── Chart.yaml               # Helm chart definition with postgres dependency
+│   ├── Chart.lock               # Dependency lock file
+│   ├── charts/                  # Packaged subchart dependencies (postgres)
+│   ├── values.yaml              # Default configuration values (Keycloak and PostgreSQL)
 │   ├── .helmignore              # Ignore rules for chart packaging
 │   └── templates/
-│       ├── deployment.yaml      # Workload deployment
-│       ├── service.yaml         # Kubernetes Service
-│       └── ingress.yaml         # Kubernetes Ingress
+│       ├── deployment.yaml      # Keycloak workload deployment
+│       ├── service.yaml         # Keycloak Kubernetes Service
+│       └── ingress.yaml         # Keycloak Kubernetes Ingress
 ├── scripts/
 │   └── template.sh              # Helper script placeholder
-├── compose.yml                  # Local lab service definition
+├── compose.yml                  # Local Keycloak + PostgreSQL lab stack definition
 ├── hk.pkl                       # hk git hooks and checks configuration
 ├── mise.toml                    # Mise tools and tasks
 └── README.md
@@ -59,32 +62,33 @@ A starter skeleton repository tailored for rapid experimentation, prototyping, a
 
 ## Security & Hardened Image Architecture
 
-Modern hardened Kubernetes environments prioritize workload security and least privilege by enforcing strict runtime constraints. This repository is architected to produce rootless, hardened container images that run out-of-the-box under restricted security standards without requiring root privileges.
+Modern hardened Kubernetes environments prioritize workload security and least privilege by enforcing strict runtime constraints. This repository is architected to deploy rootless, hardened container workloads that run out-of-the-box under restricted security standards without requiring root privileges.
 
 ### Hardened Container Standards (Kubernetes PSS `restricted`)
 
 Under the Kubernetes **Pod Security Admission (PSA)** `restricted` profile and modern hardened container runtimes:
-- **Must Run As Non-Root**: The pod specification sets `securityContext.runAsNonRoot: true` with a dedicated non-root UID (`USER 1031` or dynamic non-root UID). Containers cannot execute as UID 0.
+- **Must Run As Non-Root**: The pod specification sets `securityContext.runAsNonRoot: true` with a dedicated non-root UID (`fsGroup: 1031` or dynamic non-root UID). Containers cannot execute as UID 0.
 - **Arbitrary Dynamic UIDs**: Workload environments may assign dynamic arbitrary non-root UIDs. Files and directories required at runtime are configured with group 0 permissions (`chgrp -R 0` and `chmod -R g+rwX`) so any non-root UID can execute and access required assets.
 - **Drop All Capabilities**: The container specification explicitly drops all Linux capabilities (`capabilities.drop: ["ALL"]`).
 - **Disallow Privilege Escalation**: Pods enforce `securityContext.allowPrivilegeEscalation: false` to prevent child processes from acquiring additional privileges.
 - **RuntimeDefault Seccomp**: Workloads enforce `seccompProfile: { type: RuntimeDefault }` to restrict syscalls to safe defaults.
 - **Credential Protection**: Hardened with `automountServiceAccountToken: false` to avoid leaking Kubernetes API tokens to application containers unless explicitly needed.
-- **Unprivileged Ports**: Containers listen on non-privileged ports (> 1024).
+- **Unprivileged Ports**: Containers listen on non-privileged ports (> 1024) — port `8080` for Keycloak and port `5432` for PostgreSQL.
 - **Standard Ingress & Storage**: Uses standard Kubernetes `networking.k8s.io/v1` `Ingress` and standard CSI PersistentVolumeClaims.
 
 ### Compliance Matrix
 
 | Security Dimension | Restricted Standard Requirement | Implementation in This Repo |
 |---|---|---|
-| **Workload Execution** | Non-root UID (`runAsNonRoot: true`) | Unprivileged container image (`keycloak`) + `runAsNonRoot: true` |
-| **Group Permissions** | GID 0 (`root` group) with `g+rwX` | Configured for arbitrary UIDs and group 0 compatibility |
+| **Workload Execution** | Non-root UID (`runAsNonRoot: true`) | Unprivileged container images (`quay.io/keycloak/keycloak`, `ghcr.io/joeckr/postgres`) + `runAsNonRoot: true` |
+| **Group Permissions** | GID 0 (`root` group) with `g+rwX` | Configured for arbitrary UIDs and group 0 / `fsGroup: 1031` compatibility |
 | **Capabilities** | Must drop `ALL` capabilities | `capabilities.drop: ["ALL"]` in Helm chart |
 | **Privilege Escalation** | Prohibited (`allowPrivilegeEscalation: false`) | Configured in Helm `securityContext` |
 | **Seccomp Profile** | `RuntimeDefault` or `Localhost` | `seccompProfile: { type: RuntimeDefault }` |
 | **Service Account Token** | Disabled unless required | `automountServiceAccountToken: false` in pod spec |
-| **Port Binding** | Unprivileged (> 1024) | Listens on port `8080` |
+| **Port Binding** | Unprivileged (> 1024) | Listens on port `8080` (Keycloak) and `5432` (PostgreSQL) |
 | **Ingress Layer** | Standard Kubernetes Ingress | Kubernetes Ingress (`networking.k8s.io/v1`) |
+
 ---
 
 ## Local Environment & Podman Setup
@@ -125,10 +129,10 @@ This repository defines a 3-tier testing process to validate container security,
 
 ### Tier 1: Local Container Validation (`compose.yml`)
 
-The [`compose.yml`](compose.yml) configuration runs the service container locally using Podman Compose:
+The [`compose.yml`](compose.yml) configuration runs the Keycloak and PostgreSQL services locally using Podman Compose:
 
 ```sh
-# Start container in detached mode
+# Start container stack in detached mode
 mise run compose
 # or: podman compose up -d
 
@@ -139,14 +143,15 @@ mise run logs
 # Verify connectivity
 curl http://localhost:8080
 
-# Stop container
+# Stop container stack
 mise run down
 # or: podman compose down
 ```
 
 **What this verifies:**
 - Unprivileged user execution without host root privileges.
-- Unprivileged port binding on port `8080`.
+- Keycloak container running in development mode (`start-dev`) connected to PostgreSQL (`keycloak-db`).
+- Unprivileged port binding on port `8080` (Keycloak) and `5432` (PostgreSQL).
 - Health check verification and local volume mount handling.
 
 ---
@@ -159,7 +164,7 @@ Before deploying to an actual Kubernetes cluster, you can test the rendered Kube
 # Render templates and play Kubernetes manifests locally
 mise run play
 
-# Teardown the played pod and resources
+# Teardown the played pods and resources
 mise run play-d
 ```
 
@@ -170,24 +175,28 @@ mise run play-d
    helm template test chart/ > rendered.yaml
    ```
 2. Executes `podman play kube rendered.yaml --publish-all`, which:
-   - Reads the multi-document Kubernetes YAML (`Deployment`, `Service`).
-   - Creates a local Podman pod matching the Kubernetes `Deployment` specification.
+   - Reads the multi-document Kubernetes YAML (`Deployment`, `Service`, `PersistentVolumeClaim` for both `keycloak` and `keycloak-db`).
+   - Creates local Podman pods matching the Kubernetes workload specifications.
    - Applies the pod's `securityContext` (`runAsNonRoot: true`, capabilities drop, seccomp profile).
-   - Exposes container port `8080`.
+   - Exposes container ports `8080` and `5432`.
 
 **Inspecting the local play deployment:**
 ```sh
 # View running pods created by play kube
 podman pod ps
 
-# View container status within the pod
-podman ps --filter "pod=lab-keycloak"
+# View container status within the pods
+podman ps --filter "pod=keycloak"
+# or for postgres:
+# podman ps --filter "pod=keycloak-db"
 
 # Verify service response
 curl http://localhost:8080
 
-# Check container logs within the pod
-podman logs -f lab-keycloak-pod-lab-keycloak
+# Check container logs within the Keycloak pod
+podman logs -f keycloak-pod-keycloak
+# or for postgres:
+# podman logs -f keycloak-db-pod-keycloak-db
 ```
 
 **Teardown:**
@@ -240,10 +249,12 @@ Check the pod status and verify that Kubernetes Pod Security Admission (PSA) all
 
 ```sh
 # Check pod deployment status
-kubectl get pods -l app=lab-keycloak
+kubectl get pods -l app=keycloak
+# Or check postgres subchart pod status
+kubectl get pods -l app=postgres
 
 # Inspect pod details and events for security policy rejections
-kubectl describe pod -l app=lab-keycloak
+kubectl describe pod -l app=keycloak
 ```
 
 > [!TIP]
@@ -251,13 +262,13 @@ kubectl describe pod -l app=lab-keycloak
 
 Check the application logs:
 ```sh
-kubectl logs -l app=lab-keycloak -f
+kubectl logs -l app=keycloak -f
 ```
 
 Verify service access via port-forwarding:
 ```sh
 # Forward port 8080 from the cluster pod
-kubectl port-forward svc/lab-keycloak 8080:8080
+kubectl port-forward svc/keycloak 8080:8080
 
 # In a separate shell, test HTTP response
 curl http://localhost:8080
