@@ -11,7 +11,7 @@ app:
   proxyHeaders: "xforwarded"
   admin:
     username: admin
-    password: changeme # betterleaks:allow
+  podAnnotations: {}
   resources:
     requests:
       cpu: 500m
@@ -62,6 +62,17 @@ ingress:
   path: /
   pathType: "Prefix"
 
+secret:
+  # Set create: false or provide existingSecret when managing secrets externally (e.g. External Secrets Operator).
+  create: true
+  existingSecret: ""
+  keys:
+    adminPassword: "KC_BOOTSTRAP_ADMIN_PASSWORD"  # betterleaks:allow
+    dbPassword: "KC_DB_PASSWORD"  # betterleaks:allow
+  data:
+    KC_BOOTSTRAP_ADMIN_PASSWORD: "changeme"  # betterleaks:allow
+    KC_DB_PASSWORD: "changeme"  # betterleaks:allow
+
 db:
   enabled: true
   app:
@@ -70,5 +81,11 @@ db:
     tag: ""
     db: keycloak
     user: keycloak
-    password: changeme # betterleaks:allow
     storageSize: 10Gi
+  secret:
+    create: true
+    existingSecret: ""
+    keys:
+      password: "POSTGRES_PASSWORD"  # betterleaks:allow
+    data:
+      POSTGRES_PASSWORD: "changeme"  # betterleaks:allow
