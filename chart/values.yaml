@@ -2,7 +2,7 @@ app:
   name: keycloak
   image:
     repository: quay.io/keycloak/keycloak
-    tag: "26.7.4"
+    tag: "26.8.2-3"
     pullPolicy: IfNotPresent
   replicaCount: 1
   port: 8080
