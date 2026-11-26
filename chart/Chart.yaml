@@ -4,7 +4,6 @@ description: Helm chart for experimenting with keycloak
 type: application
 version: 0.2.0
 appVersion: "0.2.0"
-
 dependencies:
   - name: postgres
     version: "0.3.0"
