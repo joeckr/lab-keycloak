@@ -42,11 +42,11 @@ spec:
             - name: KC_DB
               value: postgres
             - name: KC_DB_URL
-              value: "jdbc:postgresql://{{ .Values.db.postgres.name }}:5432/{{ .Values.db.postgres.db }}"
+              value: "jdbc:postgresql://{{ .Values.db.app.name }}:5432/{{ .Values.db.app.db }}"
             - name: KC_DB_USERNAME
-              value: {{ .Values.db.postgres.user | quote }}
+              value: {{ .Values.db.app.user | quote }}
             - name: KC_DB_PASSWORD
-              value: {{ .Values.db.postgres.password | quote }}
+              value: {{ .Values.db.app.password | quote }}
             - name: KC_HOSTNAME
               value: {{ .Values.app.hostname | quote }}
             - name: KC_PROXY_HEADERS
