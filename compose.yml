@@ -19,7 +19,7 @@ services:
       - KC_BOOTSTRAP_ADMIN_PASSWORD=changeme # betterleaks:allow
 
   keycloak-db:
-    image: ghcr.io/joeckr/postgres:18
+    image: ghcr.io/joeckr/postgres:0.3.0
     container_name: keycloak-db
     ports:
       - "5432:5432"

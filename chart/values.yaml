@@ -1,8 +1,9 @@
 app:
   name: keycloak
-  image: quay.io/keycloak/keycloak
-  tag: 26.7.4
-  pullPolicy: Always
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "26.7.4"
+    pullPolicy: IfNotPresent
   replicaCount: 1
   port: 8080
   managementPort: 9000
@@ -63,9 +64,10 @@ ingress:
 
 db:
   enabled: true
-  postgres:
+  app:
     name: keycloak-db
-    tag: 18
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
     db: keycloak
     user: keycloak
     password: changeme # betterleaks:allow
